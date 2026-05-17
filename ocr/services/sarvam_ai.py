@@ -3,46 +3,29 @@ from dotenv import load_dotenv
 import logging
 import time
 from sarvamai import SarvamAI
+
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-if __name__=="__main__":
-    
-    api_key=os.getenv("SARVAM_API_KEY")
-    client = SarvamAI(
-        api_subscription_key=api_key
-    )
+def run_batch_ocr(input_path: str, output_path: str, language: str = "en-IN") -> None:
+    client = SarvamAI(api_subscription_key=os.getenv("SARVAM_API_KEY"))
+    start = time.time()
 
-    start_time=time.time()
-    # Create a document intelligence job
-    job = client.document_intelligence.create_job(
-        language="en-IN",
-        output_format="md"
-    )
-    print(f"Job created: {job.job_id}")
-
-    # Upload document
-    job.upload_file("/Users/prajna/Downloads/Adobe Scan 15 Apr 2026_GADRambhila.pdf")
-    print("File uploaded")
-
-    # Start processing
+    job = client.document_intelligence.create_job(language=language, output_format="md")
+    job.upload_file(input_path)
     job.start()
-    print("Job started")
-
-    # Wait for completion
     status = job.wait_until_complete()
-    print(f"Job completed with state: {status.job_state}")
+    job.download_output(output_path)
 
-    # Get processing metrics
-    metrics = job.get_page_metrics()
-    print(f"Page metrics: {metrics}")
+    logger.info("job=%s state=%s elapsed=%.1fs", job.job_id, status.job_state, time.time() - start)
 
-    # Download output (ZIP file containing the processed document)
-    job.download_output("/Users/prajna/Desktop/personal/projects/software/field-note-summarizer/files/output/working_report_april.zip")
-    end_time=time.time()
 
-    print(f"Output saved to ./output.zip; time taken {end_time-start_time}")
+if __name__ == "__main__":
+    run_batch_ocr(
+        input_path="/Users/prajna/Downloads/Adobe Scan 15 Apr 2026_GADRambhila.pdf",
+        output_path="/Users/prajna/Desktop/personal/projects/software/field-note-summarizer/files/output/working_report_april_3.zip",
+    )
 
 
 
