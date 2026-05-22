@@ -1,6 +1,5 @@
-def main():
-    print("Hello from field-note-summarizer!")
+from fastapi import FastAPI
+from ocr.router import router as ocr_router
 
-
-if __name__ == "__main__":
-    main()
+app = FastAPI()
+app.include_router(ocr_router)

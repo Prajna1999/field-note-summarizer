@@ -1,4 +1,5 @@
 import os
+import requests
 from dotenv import load_dotenv
 import logging
 import time
@@ -8,24 +9,29 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 
-def run_batch_ocr(input_path: str, output_path: str, language: str = "en-IN") -> None:
-    client = SarvamAI(api_subscription_key=os.getenv("SARVAM_API_KEY"))
-    start = time.time()
+def convert_ocr(file_path: str, language: str = "en-IN") -> str:
+    api_key = os.getenv("SARVAM_API_KEY")
+    if not api_key:
+        raise ValueError("Missing SARVAM_API_KEY")
 
-    job = client.document_intelligence.create_job(language=language, output_format="md")
-    job.upload_file(input_path)
-    job.start()
-    status = job.wait_until_complete()
-    job.download_output(output_path)
+    try:
+        client = SarvamAI(api_subscription_key=api_key)
+        start = time.time()
 
-    logger.info("job=%s state=%s elapsed=%.1fs", job.job_id, status.job_state, time.time() - start)
+        job = client.document_intelligence.create_job(language=language, output_format="md")
+        job.upload_file(file_path)
+        job.start()
+        status = job.wait_until_complete()
 
+        logger.info("job=%s state=%s elapsed=%.1fs", job.job_id, status.job_state, time.time() - start)
 
-if __name__ == "__main__":
-    run_batch_ocr(
-        input_path="/Users/prajna/Downloads/Adobe Scan 15 Apr 2026_GADRambhila.pdf",
-        output_path="/Users/prajna/Desktop/personal/projects/software/field-note-summarizer/files/output/working_report_april_3.zip",
-    )
+        download_response = client.document_intelligence.get_download_links(job_id=job.job_id)
+        details = list(download_response.download_urls.values())[0]
+        return requests.get(details.file_url).text
+    except Exception as e:
+        logger.error("OCR job failed: %s", e)
+        raise
+
 
 
 
